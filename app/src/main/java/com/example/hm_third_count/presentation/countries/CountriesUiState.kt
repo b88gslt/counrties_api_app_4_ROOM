@@ -19,8 +19,7 @@ data class CountriesUiState(
 sealed class CountriesEvent {
     data class SearchQueryChanged(val query: String) : CountriesEvent()
     data class RegionSelected(val region: String) : CountriesEvent()
-    data class ToggleFavorite(val countryCode: String) : CountriesEvent()
+    data class ToggleFavorite(val country: Country) : CountriesEvent()
     object ShowFavorites : CountriesEvent()
     object Retry : CountriesEvent()
-    object LoadCountries : CountriesEvent()
 }

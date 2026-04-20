@@ -5,5 +5,7 @@ import androidx.room.PrimaryKey
 
 @Entity(tableName = "favorites")
 data class FavoriteEntity(
-    @PrimaryKey val countryCode: String
+    @PrimaryKey val countryCode: String,
+    /** Serialized `Country` JSON so favorites are visible without network. */
+    val countrySnapshotJson: String? = null
 )

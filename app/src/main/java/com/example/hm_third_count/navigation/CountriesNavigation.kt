@@ -1,8 +1,8 @@
 package com.example.hm_third_count.navigation
 
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
@@ -17,7 +17,7 @@ fun CountriesNavigation(navController: NavHostController) {
     NavHost(navController = navController, startDestination = "countries") {
         composable("countries") {
             val viewModel: CountriesViewModel = hiltViewModel()
-            val uiState by viewModel.uiState.collectAsState()
+            val uiState by viewModel.uiState.collectAsStateWithLifecycle()
             CountriesScreen(
                 uiState = uiState,
                 onEvent = viewModel::onEvent,
@@ -27,7 +27,7 @@ fun CountriesNavigation(navController: NavHostController) {
 
         composable("detail/{countryCode}") {
             val viewModel: CountryDetailViewModel = hiltViewModel()
-            val uiState by viewModel.uiState.collectAsState()
+            val uiState by viewModel.uiState.collectAsStateWithLifecycle()
             CountryDetailScreen(
                 uiState = uiState,
                 onEvent = viewModel::onEvent,

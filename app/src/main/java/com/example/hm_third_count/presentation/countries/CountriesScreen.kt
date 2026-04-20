@@ -86,8 +86,7 @@ private fun RegionFilter(
     modifier: Modifier = Modifier
 ) {
     val regions = listOf("Africa", "Americas", "Asia", "Europe", "Oceania")
-    val regionNames = listOf("Africa", "Americas", "Asia", "Europe", "Oceania")
-    
+
     LazyRow(
         modifier = modifier,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -105,10 +104,11 @@ private fun RegionFilter(
         }
         
         items(regions.size) { index ->
+            val region = regions[index]
             FilterChip(
-                onClick = { onRegionSelected(regions[index]) },
-                label = { Text(regionNames[index]) },
-                selected = selectedRegion == regions[index] && !showFavoritesOnly
+                onClick = { onRegionSelected(region) },
+                label = { Text(region) },
+                selected = selectedRegion == region && !showFavoritesOnly
             )
         }
     }
@@ -173,7 +173,7 @@ private fun CountriesList(
     countries: List<Country>,
     favorites: Set<String>,
     onCountryClick: (String) -> Unit,
-    onFavoriteClick: (String) -> Unit,
+    onFavoriteClick: (Country) -> Unit,
     showFavoritesOnly: Boolean = false
 ) {
     if (showFavoritesOnly && countries.isEmpty()) {
@@ -214,7 +214,7 @@ private fun CountriesList(
                     country = country,
                     isFavorite = favorites.contains(country.code),
                     onClick = { onCountryClick(country.code) },
-                    onFavoriteClick = { onFavoriteClick(country.code) }
+                    onFavoriteClick = { onFavoriteClick(country) }
                 )
             }
         }
