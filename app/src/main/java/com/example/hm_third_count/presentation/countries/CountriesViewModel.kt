@@ -10,6 +10,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.update
@@ -24,8 +25,8 @@ class CountriesViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(CountriesUiState())
     val uiState: StateFlow<CountriesUiState> = _uiState.asStateFlow()
 
-    // In-memory cache — loaded once, filtered locally
     private var allCountries: List<Country> = emptyList()
+    private var favoriteSnapshotCountries: List<Country> = emptyList()
     private var searchJob: Job? = null
 
     init {
@@ -44,12 +45,22 @@ class CountriesViewModel @Inject constructor(
                 searchCountries(event.query)
             }
             is CountriesEvent.RegionSelected -> {
-                _uiState.value = _uiState.value.copy(
-                    selectedRegion = event.region,
-                    searchQuery = "",
-                    showFavoritesOnly = false
-                )
-                filterByRegion(event.region)
+                val current = _uiState.value
+                if (current.selectedRegion == event.region && !current.showFavoritesOnly) {
+                    _uiState.value = current.copy(
+                        selectedRegion = "",
+                        searchQuery = "",
+                        showFavoritesOnly = false
+                    )
+                    filterByRegion("")
+                } else {
+                    _uiState.value = current.copy(
+                        selectedRegion = event.region,
+                        searchQuery = "",
+                        showFavoritesOnly = false
+                    )
+                    filterByRegion(event.region)
+                }
             }
             CountriesEvent.ShowFavorites -> {
                 _uiState.value = _uiState.value.copy(
@@ -59,9 +70,8 @@ class CountriesViewModel @Inject constructor(
                 )
                 applyFavoritesFilter()
             }
-            is CountriesEvent.ToggleFavorite -> toggleFavorite(event.countryCode)
+            is CountriesEvent.ToggleFavorite -> toggleFavorite(event.country)
             CountriesEvent.Retry -> loadCountries()
-            CountriesEvent.LoadCountries -> loadCountries()
         }
     }
 
@@ -109,26 +119,39 @@ class CountriesViewModel @Inject constructor(
         }
     }
 
+    private fun favoriteDisplayList(favCodes: Set<String>): List<Country> =
+        if (allCountries.isNotEmpty()) {
+            allCountries.filter { it.code in favCodes }
+        } else {
+            favoriteSnapshotCountries.filter { it.code in favCodes }
+        }
+
     private fun applyFavoritesFilter() {
         val favs = _uiState.value.favorites
-        _uiState.update { it.copy(countries = allCountries.filter { c -> c.code in favs }) }
+        _uiState.update { it.copy(countries = favoriteDisplayList(favs)) }
     }
 
-    private fun toggleFavorite(countryCode: String) {
+    private fun toggleFavorite(country: Country) {
         viewModelScope.launch {
-            if (repository.isFavorite(countryCode)) repository.removeFromFavorites(countryCode)
-            else repository.addToFavorites(countryCode)
+            if (repository.isFavorite(country.code)) repository.removeFromFavorites(country.code)
+            else repository.addToFavorites(country)
         }
     }
 
     private fun observeFavorites() {
-        repository.favorites
-            .onEach { favs ->
+        combine(repository.favorites, repository.favoriteCountriesFromRoom) { codes, snapshots ->
+            favoriteSnapshotCountries = snapshots
+            codes
+        }
+            .onEach { codes ->
                 _uiState.update { current ->
                     if (current.showFavoritesOnly) {
-                        current.copy(favorites = favs, countries = allCountries.filter { it.code in favs })
+                        current.copy(
+                            favorites = codes,
+                            countries = favoriteDisplayList(codes)
+                        )
                     } else {
-                        current.copy(favorites = favs)
+                        current.copy(favorites = codes)
                     }
                 }
             }

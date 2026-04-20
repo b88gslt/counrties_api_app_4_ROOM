@@ -22,7 +22,7 @@ class CountryDetailViewModel @Inject constructor(
 
     private val countryCode: String = checkNotNull(savedStateHandle["countryCode"])
 
-    private val _uiState = MutableStateFlow(CountryDetailUiState())
+    private val _uiState = MutableStateFlow(CountryDetailUiState(isLoading = true))
     val uiState: StateFlow<CountryDetailUiState> = _uiState.asStateFlow()
 
     init {
@@ -41,15 +41,28 @@ class CountryDetailViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null) }
             repository.getCountryByCode(countryCode)
-                .onSuccess { _uiState.update { s -> s.copy(isLoading = false, country = it) } }
+                .onSuccess { country ->
+                    if (country == null) {
+                        _uiState.update {
+                            it.copy(
+                                isLoading = false,
+                                country = null,
+                                error = "Country not found"
+                            )
+                        }
+                    } else {
+                        _uiState.update { s -> s.copy(isLoading = false, country = country, error = null) }
+                    }
+                }
                 .onFailure { _uiState.update { s -> s.copy(isLoading = false, error = it.message ?: "Failed to load country details") } }
         }
     }
 
     private fun toggleFavorite() {
         viewModelScope.launch {
+            val country = _uiState.value.country ?: return@launch
             if (repository.isFavorite(countryCode)) repository.removeFromFavorites(countryCode)
-            else repository.addToFavorites(countryCode)
+            else repository.addToFavorites(country)
         }
     }
 

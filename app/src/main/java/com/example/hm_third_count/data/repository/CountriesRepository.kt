@@ -6,17 +6,27 @@ import com.example.hm_third_count.data.local.FavoriteEntity
 import com.example.hm_third_count.data.model.Country
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import kotlinx.serialization.json.Json
 import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
 class CountriesRepository @Inject constructor(
     private val api: CountriesApi,
-    private val favoriteDao: FavoriteDao
+    private val favoriteDao: FavoriteDao,
+    private val json: Json
 ) {
-    /** Emits the set of favorite country codes from Room — survives restarts. */
     val favorites: Flow<Set<String>> = favoriteDao.observeAll()
         .map { list -> list.map { it.countryCode }.toSet() }
+
+    /** Countries reconstructed from Room snapshots (favorites with saved JSON). */
+    val favoriteCountriesFromRoom: Flow<List<Country>> = favoriteDao.observeAll().map { list ->
+        list.mapNotNull { entity ->
+            entity.countrySnapshotJson?.let { raw ->
+                runCatching { json.decodeFromString<Country>(raw) }.getOrNull()
+            }
+        }
+    }
 
     suspend fun getAllCountries(): Result<List<Country>> = runCatching {
         api.getAllCountries()
@@ -35,8 +45,9 @@ class CountriesRepository @Inject constructor(
         api.getCountriesByRegion(region)
     }
 
-    suspend fun addToFavorites(countryCode: String) {
-        favoriteDao.insert(FavoriteEntity(countryCode))
+    suspend fun addToFavorites(country: Country) {
+        val snapshot = json.encodeToString(Country.serializer(), country)
+        favoriteDao.insert(FavoriteEntity(country.code, snapshot))
     }
 
     suspend fun removeFromFavorites(countryCode: String) {

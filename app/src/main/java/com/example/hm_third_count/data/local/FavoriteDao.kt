@@ -13,7 +13,7 @@ interface FavoriteDao {
     @Query("SELECT * FROM favorites")
     fun observeAll(): Flow<List<FavoriteEntity>>
 
-    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(entity: FavoriteEntity)
 
     @Delete
